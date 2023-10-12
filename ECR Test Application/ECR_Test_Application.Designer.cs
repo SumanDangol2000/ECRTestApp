@@ -52,8 +52,11 @@
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.button3 = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.label10 = new System.Windows.Forms.Label();
             this.label9 = new System.Windows.Forms.Label();
             this.pictureBox1 = new System.Windows.Forms.PictureBox();
+            this.txtUniqueTransId = new System.Windows.Forms.TextBox();
+            this.btnVerifyTrans = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgvItems)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
@@ -117,7 +120,7 @@
             // 
             this.dgvItems.AllowUserToAddRows = false;
             this.dgvItems.ColumnHeadersHeightSizeMode = System.Windows.Forms.DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            this.dgvItems.Location = new System.Drawing.Point(39, 179);
+            this.dgvItems.Location = new System.Drawing.Point(32, 86);
             this.dgvItems.Margin = new System.Windows.Forms.Padding(2);
             this.dgvItems.Name = "dgvItems";
             this.dgvItems.RowHeadersWidth = 51;
@@ -308,6 +311,9 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.btnVerifyTrans);
+            this.groupBox2.Controls.Add(this.txtUniqueTransId);
+            this.groupBox2.Controls.Add(this.label10);
             this.groupBox2.Controls.Add(this.btnAdd);
             this.groupBox2.Controls.Add(this.label3);
             this.groupBox2.Controls.Add(this.cbItems);
@@ -315,6 +321,7 @@
             this.groupBox2.Controls.Add(this.txtPrice);
             this.groupBox2.Controls.Add(this.label6);
             this.groupBox2.Controls.Add(this.txtQty);
+            this.groupBox2.Controls.Add(this.dgvItems);
             this.groupBox2.Location = new System.Drawing.Point(8, 93);
             this.groupBox2.Margin = new System.Windows.Forms.Padding(2);
             this.groupBox2.Name = "groupBox2";
@@ -323,6 +330,16 @@
             this.groupBox2.TabIndex = 25;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Add Items";
+            // 
+            // label10
+            // 
+            this.label10.AutoSize = true;
+            this.label10.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Bold, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label10.Location = new System.Drawing.Point(784, 432);
+            this.label10.Name = "label10";
+            this.label10.Size = new System.Drawing.Size(206, 20);
+            this.label10.TabIndex = 29;
+            this.label10.Text = "Verify recent transaction";
             // 
             // label9
             // 
@@ -347,6 +364,26 @@
             this.pictureBox1.TabIndex = 27;
             this.pictureBox1.TabStop = false;
             // 
+            // txtUniqueTransId
+            // 
+            this.txtUniqueTransId.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtUniqueTransId.Location = new System.Drawing.Point(788, 460);
+            this.txtUniqueTransId.Name = "txtUniqueTransId";
+            this.txtUniqueTransId.Size = new System.Drawing.Size(290, 26);
+            this.txtUniqueTransId.TabIndex = 30;
+            // 
+            // btnVerifyTrans
+            // 
+            this.btnVerifyTrans.Font = new System.Drawing.Font("Microsoft Sans Serif", 16F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.btnVerifyTrans.Location = new System.Drawing.Point(788, 491);
+            this.btnVerifyTrans.Margin = new System.Windows.Forms.Padding(2);
+            this.btnVerifyTrans.Name = "btnVerifyTrans";
+            this.btnVerifyTrans.Size = new System.Drawing.Size(100, 38);
+            this.btnVerifyTrans.TabIndex = 31;
+            this.btnVerifyTrans.Text = "Verify";
+            this.btnVerifyTrans.UseVisualStyleBackColor = true;
+            this.btnVerifyTrans.Click += new System.EventHandler(this.btnVerifyTrans_Click);
+            // 
             // ECR_Test_Application
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -362,7 +399,6 @@
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label4);
             this.Controls.Add(this.lblBillNo);
-            this.Controls.Add(this.dgvItems);
             this.Controls.Add(this.txtMessage);
             this.Controls.Add(this.txtAmount);
             this.Controls.Add(this.label1);
@@ -408,6 +444,9 @@
         private System.Windows.Forms.GroupBox groupBox2;
         private System.Windows.Forms.Label label9;
         private System.Windows.Forms.PictureBox pictureBox1;
+        private System.Windows.Forms.Label label10;
+        private System.Windows.Forms.TextBox txtUniqueTransId;
+        private System.Windows.Forms.Button btnVerifyTrans;
     }
 }
 

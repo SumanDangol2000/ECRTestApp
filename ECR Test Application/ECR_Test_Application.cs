@@ -15,6 +15,7 @@ using System.Data.SqlTypes;
 using Newtonsoft.Json;
 using wcfServer.Services;
 using System.Text.Json.Nodes;
+using System.IO;
 
 namespace ECR_Test_Application
 {
@@ -38,6 +39,7 @@ namespace ECR_Test_Application
         //State Flag is false at begining, after sending request to POS set it to true
         //and After Getting response from POS set it to false
         bool waiting = false;
+        string pat = "T!3@$T#P$@%T^";
 
         public ECR_Test_Application()
         {
@@ -52,32 +54,14 @@ namespace ECR_Test_Application
 
 
         //async await function
-        private async Task<string> SendRequestAsync(string paymentType, float amount, long tip, string remarks)
+        private async Task<string> SendRequestAsync(string uniqueTransId, string paymentType, float amount, long tip, string remarks, string pat)
         {
             var endpoint = new EndpointAddress(uri);
             var proxy = channel.CreateChannel(endpoint);
             var response = "";
             try
             {
-                response = await Task.Run(() => proxy?.sendRequest(CreateSaleRequest(paymentType, amount, tip, remarks)));
-            }
-            catch (Exception ex)
-            {
-                response = "Service Time Out." + ex.Message;
-
-            }
-
-            return response;
-        }
-
-        private async Task<string> getPosStatusAsync()
-        {
-            var endpoint = new EndpointAddress(uri);
-            var proxy = channel.CreateChannel(endpoint);
-            var response = "";
-            try
-            {
-                response = await Task.Run(() => proxy?.getPosStatus());
+                response = await Task.Run(() => proxy?.sendRequest(CreateTransRequest(uniqueTransId, paymentType, amount, tip, remarks, pat)));
             }
             catch (Exception ex)
             {
@@ -103,85 +87,18 @@ namespace ECR_Test_Application
             return value;
         }
 
-        //Sale
-        private async void button1_Click(object sender, EventArgs e)
+        //Sale payment
+        private void button1_Click(object sender, EventArgs e)
         {
-            txtMessage.Text = "";
-            lblstatus.Text = "";
-
-            //var statusResponse = await getPosStatusAsync();
-
-            //if (statusResponse == "Online")
-            //{
-                if (!validate())
-                {
-                    MessageBox.Show("Please enter valid amount.");
-                    return;
-                }
-                this.Enabled = false;
-                var response = await SendRequestAsync("sale", long.Parse(txtAmount.Text) * 100, 0, "");
-                CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
-                if (_CommonJson.resultcode == "000")
-                {
-                    lblstatus.Text = "Payment Successful";
-                }
-                else if (_CommonJson.resultcode == "05")
-                {
-                    lblstatus.Text = _CommonJson.message;
-                }
-         
-                txtMessage.Text = response;
-                this.Enabled = true;
-                SaleResponseJson saleResponse = JsonConvert.DeserializeObject<SaleResponseJson>(response);
-            //}
-            //else
-            //{
-            //    MessageBox.Show(statusResponse);
-            //}
-
+            proceedTransaction("sale");
 
         }
 
-        //Fonepay
-        private async void button1_Click_1(object sender, EventArgs e)
+        //Fonepay payment
+        private void button1_Click_1(object sender, EventArgs e)
         {
-            txtMessage.Text = "";
-            lblstatus.Text = "";
-            //var statusResponse = await getPosStatusAsync();
+            proceedTransaction("fonePay");
 
-            //if (statusResponse == "Online")
-            //{
-                if (!validate())
-                {
-                    MessageBox.Show("Please enter valid amount.");
-                    return;
-                }
-                this.Enabled = false;
-                waiting = true;
-                //MessageBox.Show(Convert.ToString( float.Parse(txtAmount.Text) * 100));
-                var response = await SendRequestAsync("fonePay", float.Parse(txtAmount.Text.ToString()) * 100, 0, "");
-
-                CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
-                if (_CommonJson.resultcode == "000")
-                {
-                    lblstatus.Text = "Payment Successful";
-                    txtAmount.Text = "";
-                    cbItems.Focus();
-                    t.Rows.Clear();
-                }
-                else if (_CommonJson.resultcode == "05")
-                {
-                    lblstatus.Text = _CommonJson.message;
-                }
-
-                txtMessage.Text = response;
-                this.Enabled = true;
-                MessageBox.Show(lblstatus.Text, "Message Box");
-            //}
-            //else
-            //{
-            //    MessageBox.Show(statusResponse);
-            //}
             #region extra codes
             //SaleResponseJson saleResponse = JsonConvert.DeserializeObject<SaleResponseJson>(r);
 
@@ -219,70 +136,130 @@ namespace ECR_Test_Application
             #endregion
         }
 
-        //Nepalpay
-        private async void button1_Click_2(object sender, EventArgs e)
+        //Nepalpay payment
+        private void button1_Click_2(object sender, EventArgs e)
         {
-    
+
+            proceedTransaction("nepalPay");
+
+        }
+
+        //Cash payment
+        private void button3_Click(object sender, EventArgs e)
+        {
+            //Write code for cash payment
+        }
+
+
+        private async void proceedTransaction(string paymentType)
+        {
             txtMessage.Text = "";
             lblstatus.Text = "";
-            //var statusResponse = await getPosStatusAsync();
 
-            //if (statusResponse == "Online")
-            //{
-                if (!validate())
-                {
-                    MessageBox.Show("Please enter valid amount.");
-                    return;
-                }
-                this.Enabled = false;
-                waiting = true;
-                //MessageBox.Show(Convert.ToString( float.Parse(txtAmount.Text) * 100));
-                var response = await SendRequestAsync("nepalPay", long.Parse(txtAmount.Text.ToString()) * 100, 0, "");
+            //Generate random number for unique transaction ID
+            Random rnd = new Random();
+            int uniqueTransId = rnd.Next();
+            txtUniqueTransId.Text = uniqueTransId.ToString();
 
-                CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
-                if (_CommonJson.resultcode == "000")
-                {
-                    lblstatus.Text = "Payment Successful";
-                    txtAmount.Text = "";
-                    cbItems.Focus();
-                    t.Rows.Clear();
-                }
-                else if (_CommonJson.resultcode == "05")
-                {
-                    lblstatus.Text = _CommonJson.message;
-                }
-
-                txtMessage.Text = response;
-                this.Enabled = true;
-                MessageBox.Show(lblstatus.Text, "Message Box");
-            //}
-            //else
-            //{
-            //    MessageBox.Show(statusResponse);
-            //}
-
-        }
-
-        SaleResponseJson DecodeTransactionResponse(string Response)
-        {
-            SaleResponseJson sr = JsonConvert.DeserializeObject<SaleResponseJson>(Response);
-            return sr;
-        }
-        string CreateSaleRequest(string tranType, float amount, long tip, string remark)
-        {
-            SaleRequestJson NewMessage = new SaleRequestJson
+            //Validate the amount
+            if (!validate())
             {
+                MessageBox.Show("Please enter valid amount.");
+                return;
+            }
+            this.Enabled = false;
+            waiting = true;
+
+            //Request and Response
+            var response = await SendRequestAsync(uniqueTransId.ToString(), paymentType, long.Parse(txtAmount.Text.ToString()) * 100, 0, "", pat);
+            CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
+
+            //Handel response
+            if (_CommonJson.resultcode == "000")
+            {
+                lblstatus.Text = "Payment Successful";
+                txtAmount.Text = "";
+                cbItems.Focus();
+                t.Rows.Clear();
+            }
+            else if (_CommonJson.resultcode == "05")
+            {
+                lblstatus.Text = _CommonJson.status;
+            }
+
+            txtMessage.Text = response;
+            this.Enabled = true;
+            MessageBox.Show(lblstatus.Text, "Message Box");
+
+        }
+
+        //Verify the transaction using uniqye transaction id
+        private void btnVerifyTrans_Click(object sender, EventArgs e)
+        {
+            var endpoint = new EndpointAddress(uri);
+            var proxy = channel.CreateChannel(endpoint);
+            var response = "";
+            var transType = "verification";
+            string uniqueTransId = txtUniqueTransId.Text;
+            if (uniqueTransId == "" )
+            {
+                MessageBox.Show("Please enter valid transaction id.");
+                return;
+            }
+
+            response = proxy?.sendRequest(CreateVerifyRequest(uniqueTransId, transType, pat));
+            CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
+
+            //Handel response
+            if (_CommonJson.resultcode == "000")
+            {
+                lblstatus.Text = "Payment Successful";
+                txtAmount.Text = "";
+                cbItems.Focus();
+                t.Rows.Clear();
+            }
+            else if (_CommonJson.resultcode == "05")
+            {
+                lblstatus.Text = _CommonJson.status;
+            }
+
+            txtMessage.Text = response;
+            this.Enabled = true;
+            MessageBox.Show(lblstatus.Text, "Message Box");
+
+        }
+
+        string CreateTransRequest(string uniqueTransId, string tranType, float amount, long tip, string remark, string pat)
+        {
+            TransRequestJson NewMessage = new TransRequestJson
+            {
+                uniqueTransId = uniqueTransId,
+
                 transType = tranType,
                 amount = amount,
                 tip = tip,
-                remark = remark
+                remark = remark,
+                pat = pat
+
             };
             string jsonString = JsonConvert.SerializeObject(NewMessage);
             return jsonString;
         }
 
-        DataTable t = new DataTable();
+        string CreateVerifyRequest(string uniqueTransId, string tranType, string pat)
+        {
+            TransRequestJson verifyObject = new TransRequestJson
+            {
+                uniqueTransId = uniqueTransId,
+                transType = tranType,
+                pat = pat
+            };
+            string jsonString = JsonConvert.SerializeObject(verifyObject);
+            return jsonString;
+        }
 
+        DataTable t = new DataTable();
+        double grossAmount = 0;
         private void ECR_Test_Application_Load(object sender, EventArgs e)
         {
             cbItems.SelectedIndex = 0;
@@ -296,7 +273,6 @@ namespace ECR_Test_Application
 
         }
 
-        double grossAmount = 0;
         private void btnAdd_Click(object sender, EventArgs e)
         {
             double netAmount = (Double.Parse(txtPrice.Text) * Double.Parse(txtQty.Text));
@@ -304,12 +280,6 @@ namespace ECR_Test_Application
 
             grossAmount += netAmount;
             txtAmount.Text = grossAmount.ToString();
-        }
-
-
-        private async void button3_Click(object sender, EventArgs e)
-        {
-
         }
 
 

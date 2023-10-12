@@ -9,7 +9,7 @@ namespace wcfServer.Services
     public class CommonJson
     {
         public string resultcode { get; set; }
-        public string message { get; set; }
+        public string status { get; set; }
 
     }
 }

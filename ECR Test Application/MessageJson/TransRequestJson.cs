@@ -8,7 +8,7 @@ namespace wcfServer.Services
 {
     public class TransRequestJson
     {
-        public string uniqueTransId { get; set; }
+        public string transId { get; set; }
         public string transType { get; set; }
         public float amount { get; set; }
         public long tip { get; set; }

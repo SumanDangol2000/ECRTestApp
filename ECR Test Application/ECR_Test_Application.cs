@@ -97,7 +97,7 @@ namespace ECR_Test_Application
         //Fonepay payment
         private void button1_Click_1(object sender, EventArgs e)
         {
-            proceedTransaction("fonePay");
+            proceedTransaction("fonepay");
 
             #region extra codes
             //SaleResponseJson saleResponse = JsonConvert.DeserializeObject<SaleResponseJson>(r);
@@ -140,7 +140,7 @@ namespace ECR_Test_Application
         private void button1_Click_2(object sender, EventArgs e)
         {
 
-            proceedTransaction("nepalPay");
+            proceedTransaction("nepalpay");
 
         }
 
@@ -233,7 +233,7 @@ namespace ECR_Test_Application
         {
             TransRequestJson NewMessage = new TransRequestJson
             {
-                uniqueTransId = uniqueTransId,
+                transId = uniqueTransId,
 
                 transType = tranType,
                 amount = amount,
@@ -250,7 +250,7 @@ namespace ECR_Test_Application
         {
             TransRequestJson verifyObject = new TransRequestJson
             {
-                uniqueTransId = uniqueTransId,
+                transId = uniqueTransId,
                 transType = tranType,
                 pat = pat
             };

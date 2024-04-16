@@ -16,6 +16,11 @@ using Newtonsoft.Json;
 using wcfServer.Services;
 using System.Text.Json.Nodes;
 using System.IO;
+using System.IO.Ports;
+using System.Diagnostics;
+using System.Security.Cryptography;
+using Newtonsoft.Json.Linq;
+using System.Data.SqlClient;
 
 namespace ECR_Test_Application
 {
@@ -35,11 +40,12 @@ namespace ECR_Test_Application
     {
         string uri;
         NetTcpBinding binding;
+        private int timeLeft;
         ChannelFactory<IPaymentService> channel;
         //State Flag is false at begining, after sending request to POS set it to true
         //and After Getting response from POS set it to false
         bool waiting = false;
-        string pat = "T!3@$T#P$@%T^";
+        string pat = "123456789";
 
         public ECR_Test_Application()
         {
@@ -49,9 +55,10 @@ namespace ECR_Test_Application
             binding.ReceiveTimeout = TimeSpan.FromMinutes(5);
             binding.SendTimeout = TimeSpan.FromMinutes(5);
             channel = new ChannelFactory<IPaymentService>(binding);
-
+            button2.BackColor = Color.Yellow;
+            StartDetectionTimer();
+            InitializeForm();
         }
-
 
         //async await function
         private async Task<string> SendRequestAsync(string uniqueTransId, string paymentType, float amount, long tip, string remarks, string pat)
@@ -72,20 +79,103 @@ namespace ECR_Test_Application
             return response;
         }
 
+        private async Task<string> SendRestartRequestAsync(string uniqueTransId, string paymentType, float amount, long tip, string remarks, string pat)
+        {
+            var endpoint = new EndpointAddress(uri);
+            var proxy = channel.CreateChannel(endpoint);
+            string response = "";
+            this.Enabled = false;
+            try
+            {
+                // Set a timeout for the request
+                int timeoutMilliseconds = 2000; 
+
+                // Task to execute the actual request
+                var requestTask =  Task.Run(() => proxy?.sendRequest(CreateRestartRequest(paymentType, pat)));
+
+                // Task to delay for the timeout period
+                var timeoutTask = Task.Delay(timeoutMilliseconds);
+
+                // Wait for either the request to complete or the timeout period to elapse
+                var completedTask = await Task.WhenAny(requestTask, timeoutTask);
+
+                if (completedTask == requestTask)
+                {
+                    // If the request completed within the timeout, get the result
+                    response = await requestTask;
+                    ShowMessageAndStartTimer();
+                    if (response == null)
+                        throw new InvalidOperationException("The proxy returned null.");
+                }
+                else
+                {
+                    lblCountdown.Text = "Waiting for operation...";
+                    // Handle timeout scenario
+                    response = "Request timed out.";
+                    lblCountdown.Visible = true;
+                    MessageBox.Show("The Service is yet to Start Please start it.", "Timeout Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    
+                }
+            }
+            catch (EndpointNotFoundException enf)
+            {
+                response = "Could not connect to the service. Please check the service status and network connection.";
+                MessageBox.Show(response, "Connection Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                ResetApplicationForRetry(); 
+            }
+            catch (Exception ex)
+            {
+                response = "Restart operation failed: " + ex.Message;
+                MessageBox.Show(response, "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            this.Enabled = true;
+            return response;
+        }
+        private void ResetApplicationForRetry()
+        {
+            button4.Enabled = true;
+        }
+        string CreateRestartRequest(string paymentType, string pat)
+        {
+            var request = new
+            {
+                transType = paymentType,
+                pat = pat
+            };
+
+            string jsonString = JsonConvert.SerializeObject(request);
+            return jsonString;
+        }
+
+        string CreateTransRequest(string uniqueTransId, string paymentType, float amount, long tip, string remark, string pat)
+        {
+            TransRequestJson NewMessage = new TransRequestJson
+            {
+                transId = uniqueTransId,
+
+                transType = paymentType,
+                amount = amount,
+                tip = tip,
+                remark = remark,
+                pat = pat
+
+            };
+            string jsonString = JsonConvert.SerializeObject(NewMessage);
+            return jsonString;
+        }
         private bool validate()
         {
-            bool value = true;
-            float v;
-            if (txtAmount.Text == "" || !float.TryParse(txtAmount.Text, out v))
+            float v; 
+            if (!string.IsNullOrEmpty(txtAmount.Text) && float.TryParse(txtAmount.Text, out v))
             {
-                value = false;
+                return true; 
             }
             else
             {
-                value = true;
+                return false; 
             }
-            return value;
         }
+
 
         //Sale payment
         private void button1_Click(object sender, EventArgs e)
@@ -143,62 +233,104 @@ namespace ECR_Test_Application
             proceedTransaction("nepalpay");
 
         }
+        //for restart
+        private async void button4_Click(object sender, EventArgs e)
+        {
+            string uniqueTransId = Guid.NewGuid().ToString();
+            string paymentType = "restart";
+            float amount = 0.0f;
+            long tip = 0L;
+            string remarks = "Service restart process";
+            string pat = "123456789";
+            var response = await SendRestartRequestAsync(uniqueTransId, paymentType, amount, tip, remarks, pat);
+           
+        }
+
+        //CountDown timer
+        private void countdownTimer_Tick(object sender, EventArgs e)
+        {
+            if (timeLeft > 0)
+            {
+                
+                lblCountdown.Text = $"{timeLeft } seconds remaining";
+                timeLeft--;
+            }
+            else
+            {
+                countdownTimer.Stop();
+                lblCountdown.Text = "Service restarted Successfully!";
+                // Additional actions after countdown
+            }
+        }
+
+        private void ShowMessageAndStartTimer()
+        {
+            StartTimer();
+        }
+        private void StartTimer()
+        {
+            if (!countdownTimer.Enabled) 
+            {
+                timeLeft = 16; 
+                lblCountdown.Text = $"{timeLeft} seconds remaining";
+                countdownTimer.Start(); 
+            }
+        }
 
         //Cash payment
         private void button3_Click(object sender, EventArgs e)
         {
-            //Write code for cash payment
+            
         }
-
 
         private async void proceedTransaction(string paymentType)
         {
             txtMessage.Text = "";
             lblstatus.Text = "";
-
-            //Generate random number for unique transaction ID
-            Random rnd = new Random();
-            int uniqueTransId = rnd.Next();
-            txtUniqueTransId.Text = uniqueTransId.ToString();
+                Random rnd = new Random();
+                int uniqueTransId = rnd.Next();
+                txtUniqueTransId.Text = uniqueTransId.ToString();
+            Debug.WriteLine($"Current txtAmount.Text: '{txtAmount.Text}'");
 
             //Validate the amount
             if (!validate())
-            {
-                MessageBox.Show("Please enter valid amount.");
-                return;
-            }
-            this.Enabled = false;
-            waiting = true;
+                {
+                    MessageBox.Show("Please enter valid amount.");
+                    return;
+                }
+                this.Enabled = false;
+                waiting = true;
+                var response = await SendRequestAsync(uniqueTransId.ToString(), paymentType, long.Parse(txtAmount.Text.ToString()) * 100, 0, "", pat);
+                CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
 
-            //Request and Response
-            var response = await SendRequestAsync(uniqueTransId.ToString(), paymentType, long.Parse(txtAmount.Text.ToString()) * 100, 0, "", pat);
-            CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
+                //Handle response
+                if (_CommonJson.resultcode == "000")
+                {
+                    lblstatus.Text = "Payment Successful";
+                    txtAmount.Text = "";
+                   cbItems.Focus();
+                    t.Rows.Clear();
 
-            //Handel response
-            if (_CommonJson.resultcode == "000")
-            {
-                lblstatus.Text = "Payment Successful";
-                txtAmount.Text = "";
-                cbItems.Focus();
-                t.Rows.Clear();
-            }
-            else if (_CommonJson.resultcode == "05")
-            {
-                lblstatus.Text = _CommonJson.status;
-            }
 
-            txtMessage.Text = response;
-            this.Enabled = true;
-            MessageBox.Show(lblstatus.Text, "Message Box");
+                }
+                else if (_CommonJson.resultcode == "05")
+                {
+                    lblstatus.Text = _CommonJson.status;
 
+                }
+
+                txtMessage.Text = FormatCommonJson(_CommonJson);
+                this.Enabled = true;
+                MessageBox.Show(lblstatus.Text, "Message Box");
+            
         }
+        //Verify the transaction using unique transaction id
 
-        //Verify the transaction using uniqye transaction id
         private void btnVerifyTrans_Click(object sender, EventArgs e)
         {
             var endpoint = new EndpointAddress(uri);
             var proxy = channel.CreateChannel(endpoint);
-            var response = "";
+            string response = "";
             var transType = "verification";
             string uniqueTransId = txtUniqueTransId.Text;
             if (uniqueTransId == "" )
@@ -206,44 +338,58 @@ namespace ECR_Test_Application
                 MessageBox.Show("Please enter valid transaction id.");
                 return;
             }
-
-            response = proxy?.sendRequest(CreateVerifyRequest(uniqueTransId, transType, pat));
-            CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
-
-            //Handel response
-            if (_CommonJson.resultcode == "000")
+            try
             {
-                lblstatus.Text = "Payment Successful";
-                txtAmount.Text = "";
-                cbItems.Focus();
-                t.Rows.Clear();
+                response = proxy?.sendRequest(CreateVerifyRequest(uniqueTransId, transType, pat));
+                CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
+
+                // Handle response
+                if (_CommonJson.resultcode == "000")
+                {
+                    lblstatus.Text = "Payment Successful";
+                    txtAmount.Text = "";
+                   cbItems.Focus();
+                    t.Rows.Clear();
+                }
+                else if (_CommonJson.resultcode == "05")
+                {
+                    lblstatus.Text = _CommonJson.status;
+                   
+                }
+                else
+                {
+                    lblstatus.Text = "An error occurred during the transaction.";
+                }
+
+                txtMessage.Text = FormatCommonJson(_CommonJson);
+                this.Enabled = true;
+                MessageBox.Show(lblstatus.Text, "Transaction Status");
             }
-            else if (_CommonJson.resultcode == "05")
+            catch (Exception ex)
             {
-                lblstatus.Text = _CommonJson.status;
+                MessageBox.Show("Error processing response: " + ex.Message, "Error");
             }
-
-            txtMessage.Text = response;
-            this.Enabled = true;
-            MessageBox.Show(lblstatus.Text, "Message Box");
-
         }
-
-        string CreateTransRequest(string uniqueTransId, string tranType, float amount, long tip, string remark, string pat)
+        private string FormatCommonJson(CommonJson _CommonJson)
         {
-            TransRequestJson NewMessage = new TransRequestJson
-            {
-                transId = uniqueTransId,
+            StringBuilder sb = new StringBuilder();
 
-                transType = tranType,
-                amount = amount,
-                tip = tip,
-                remark = remark,
-                pat = pat
+            if (!string.IsNullOrEmpty(_CommonJson.invoiceNo))
+                sb.AppendLine($"Invoice Number: {_CommonJson.invoiceNo}");
+                sb.AppendLine($"Message: {_CommonJson.message}");
+                sb.AppendLine($"Result Code: {_CommonJson.resultcode}");
+            if (_CommonJson.transactionAmount != null) // Assuming it's a nullable type; adjust as necessary
+                sb.AppendLine($"Transaction Amount: {_CommonJson.transactionAmount}");
+            if (!string.IsNullOrEmpty(_CommonJson.transactionDate))
+                sb.AppendLine($"Transaction Date: {_CommonJson.transactionDate}");
+            if (!string.IsNullOrEmpty(_CommonJson.transactionTime))
+                sb.AppendLine($"Transaction Time: {_CommonJson.transactionTime}");
+            if (!string.IsNullOrEmpty(_CommonJson.transactionType))
+                sb.AppendLine($"Transaction Type: {_CommonJson.transactionType}");
+            if (!string.IsNullOrEmpty(_CommonJson.verifyTransId))
+                sb.AppendLine($"Verify Transaction ID: {_CommonJson.verifyTransId}");
 
-            };
-            string jsonString = JsonConvert.SerializeObject(NewMessage);
-            return jsonString;
+            return sb.ToString();
         }
 
         string CreateVerifyRequest(string uniqueTransId, string tranType, string pat)
@@ -263,8 +409,6 @@ namespace ECR_Test_Application
         private void ECR_Test_Application_Load(object sender, EventArgs e)
         {
             cbItems.SelectedIndex = 0;
-
-
             t.Columns.Add("NAME", typeof(string));
             t.Columns.Add("PRICE", typeof(string));
             t.Columns.Add("QTY", typeof(string));
@@ -283,5 +427,98 @@ namespace ECR_Test_Application
         }
 
 
+        private System.Threading.Timer detectionTimer;
+        private bool devicePresent = false;
+        private void StartDetectionTimer()
+        {
+            TimerCallback callback = DetectDevices;
+            detectionTimer?.Dispose(); 
+            detectionTimer = new System.Threading.Timer(callback, null, 0, 1000);
+        }
+        private void DetectDevices(object state)
+        {
+            UpdateDeviceConnectionStatus();
+        }
+        private void UpdateDeviceConnectionStatus()
+        {
+            // Check if handle is created and form is not disposed
+            if (this.IsHandleCreated && !this.IsDisposed)
+            {
+                this.Invoke(new Action(() => {
+                    try
+                    {
+                        string[] availablePorts = SerialPort.GetPortNames();
+                        bool isPresent = Array.IndexOf(availablePorts, "COM8") != -1;
+                        if (isPresent && !devicePresent)
+                        {
+                            button2.BackColor = Color.Green;
+                        }
+                        else if (!isPresent && devicePresent)
+                        {
+                            button2.BackColor = Color.Red;
+                        }
+                        devicePresent = isPresent;
+
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error in device detection: {ex.Message}");
+                    }
+                }));
+            }
+            else
+            {
+                Console.WriteLine("Handle not created or form is disposed.");
+            }
+        }
+
+        protected override void OnFormClosed(FormClosedEventArgs e)
+        {
+            base.OnFormClosed(e);
+            detectionTimer?.Dispose();
+        }
+
+        private async void button2_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void txtMessage_TextChanged(object sender, EventArgs e)
+        {
+        }
+        private void InitializeForm()
+        {
+            // Reset text fields
+            txtMessage.Text = "";
+            lblstatus.Text = "";
+            txtAmount.Text = ""; 
+            txtUniqueTransId.Text = "";
+            txtPrice.Text = "1";
+            txtQty.Text = "1";
+            grossAmount = 0;
+
+            if (dgvItems.DataSource is DataTable)
+            {
+                ((DataTable)dgvItems.DataSource).Clear();
+            }
+
+        }
+        private void button5_Click(object sender, EventArgs e)
+        {
+            InitializeForm();
+        }
+        private void dgvItems_CellContentClick(object sender, DataGridViewCellEventArgs e)
+        {
+
+        }
+        private void label3_Click(object sender, EventArgs e)
+        {
+        }
+        private void txtAmount_TextChanged(object sender, EventArgs e)
+        {
+        }
+        private void lblCountdown_Click(object sender, EventArgs e)
+        {
+        }
     }
 }

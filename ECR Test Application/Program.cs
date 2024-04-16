@@ -16,7 +16,24 @@ namespace ECR_Test_Application
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new ECR_Test_Application());
+            try
+            {
+                Application.Run(new ECR_Test_Application());
+            }
+            catch (Exception ex)
+            {
+                DialogResult result = MessageBox.Show("Service not started yet.", "Service Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+
+                if (result == DialogResult.OK)
+                {
+                    Application.Run(new ECR_Test_Application());
+                }
+
+                
+                Console.WriteLine(ex.ToString());
+            }
+           
+          
         }
     }
 }

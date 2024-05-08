@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -22,18 +23,18 @@ namespace ECR_Test_Application
             }
             catch (Exception ex)
             {
+                Console.WriteLine("Solve this error " + ex.InnerException?.ToString());
                 DialogResult result = MessageBox.Show("Service not started yet.", "Service Unavailable", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 
                 if (result == DialogResult.OK)
                 {
                     Application.Run(new ECR_Test_Application());
                 }
-
-                
-                Console.WriteLine(ex.ToString());
+                Console.WriteLine("Error is this " + ex.ToString());
             }
-           
-          
+
+
         }
+       
     }
 }

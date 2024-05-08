@@ -78,8 +78,7 @@ namespace ECR_Test_Application
 
             return response;
         }
-
-        private async Task<string> SendRestartRequestAsync(string uniqueTransId, string paymentType, float amount, long tip, string remarks, string pat)
+            private async Task<string> SendRestartRequestAsync( string paymentType)
         {
             var endpoint = new EndpointAddress(uri);
             var proxy = channel.CreateChannel(endpoint);
@@ -87,18 +86,11 @@ namespace ECR_Test_Application
             this.Enabled = false;
             try
             {
-                // Set a timeout for the request
-                int timeoutMilliseconds = 2000; 
-
-                // Task to execute the actual request
-                var requestTask =  Task.Run(() => proxy?.sendRequest(CreateRestartRequest(paymentType, pat)));
-
-                // Task to delay for the timeout period
-                var timeoutTask = Task.Delay(timeoutMilliseconds);
-
+                var requestTask =  Task.Run(() => proxy?.sendRequest(CreateRestartRequest(paymentType)));
+                // Task to delay for the timeout period  
+                var timeoutTask = Task.Delay(2000);
                 // Wait for either the request to complete or the timeout period to elapse
                 var completedTask = await Task.WhenAny(requestTask, timeoutTask);
-
                 if (completedTask == requestTask)
                 {
                     // If the request completed within the timeout, get the result
@@ -111,10 +103,9 @@ namespace ECR_Test_Application
                 {
                     lblCountdown.Text = "Waiting for operation...";
                     // Handle timeout scenario
-                    response = "Request timed out.";
+                   // response = "Request timed out.";
                     lblCountdown.Visible = true;
-                    MessageBox.Show("The Service is yet to Start Please start it.", "Timeout Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    
+                    MessageBox.Show("The Service is yet to Start Please start it.", "Timeout Notification", MessageBoxButtons.OK, MessageBoxIcon.Warning);                   
                 }
             }
             catch (EndpointNotFoundException enf)
@@ -135,12 +126,11 @@ namespace ECR_Test_Application
         {
             button4.Enabled = true;
         }
-        string CreateRestartRequest(string paymentType, string pat)
+        string CreateRestartRequest(string paymentType)
         {
             var request = new
             {
                 transType = paymentType,
-                pat = pat
             };
 
             string jsonString = JsonConvert.SerializeObject(request);
@@ -236,14 +226,9 @@ namespace ECR_Test_Application
         //for restart
         private async void button4_Click(object sender, EventArgs e)
         {
-            string uniqueTransId = Guid.NewGuid().ToString();
             string paymentType = "restart";
-            float amount = 0.0f;
-            long tip = 0L;
-            string remarks = "Service restart process";
-            string pat = "123456789";
-            var response = await SendRestartRequestAsync(uniqueTransId, paymentType, amount, tip, remarks, pat);
-           
+            var response = await SendRestartRequestAsync(paymentType);
+            MessageBox.Show(response, "Notification");
         }
 
         //CountDown timer
@@ -290,25 +275,29 @@ namespace ECR_Test_Application
                 Random rnd = new Random();
                 int uniqueTransId = rnd.Next();
                 txtUniqueTransId.Text = uniqueTransId.ToString();
-            Debug.WriteLine($"Current txtAmount.Text: '{txtAmount.Text}'");
+          //  Debug.WriteLine($"Current txtAmount.Text: '{txtAmount.Text}'");
 
             //Validate the amount
-            if (!validate())
-                {
-                    MessageBox.Show("Please enter valid amount.");
-                    return;
-                }
+             if (!validate())
+             {
+                  MessageBox.Show("Please enter valid amount.");
+                  return;
+              }
                 this.Enabled = false;
                 waiting = true;
                 var response = await SendRequestAsync(uniqueTransId.ToString(), paymentType, long.Parse(txtAmount.Text.ToString()) * 100, 0, "", pat);
                 CommonJson _CommonJson = JsonConvert.DeserializeObject<CommonJson>(response);
+
+            if (_CommonJson != null)
+            {
+
 
                 //Handle response
                 if (_CommonJson.resultcode == "000")
                 {
                     lblstatus.Text = "Payment Successful";
                     txtAmount.Text = "";
-                   cbItems.Focus();
+                    cbItems.Focus();
                     t.Rows.Clear();
 
 
@@ -318,6 +307,11 @@ namespace ECR_Test_Application
                     lblstatus.Text = _CommonJson.status;
 
                 }
+            }
+            else
+            {
+                MessageBox.Show("Failed to process transaction please try again.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
 
                 txtMessage.Text = FormatCommonJson(_CommonJson);
                 this.Enabled = true;
@@ -488,7 +482,7 @@ namespace ECR_Test_Application
         }
         private void InitializeForm()
         {
-            // Reset text fields
+            // Reset text fields 
             txtMessage.Text = "";
             lblstatus.Text = "";
             txtAmount.Text = ""; 
@@ -519,6 +513,11 @@ namespace ECR_Test_Application
         }
         private void lblCountdown_Click(object sender, EventArgs e)
         {
+        }
+
+        private void cbItems_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

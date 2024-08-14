@@ -21,6 +21,8 @@ using System.Diagnostics;
 using System.Security.Cryptography;
 using Newtonsoft.Json.Linq;
 using System.Data.SqlClient;
+using System.Configuration;
+
 
 namespace ECR_Test_Application
 {
@@ -442,7 +444,8 @@ namespace ECR_Test_Application
                     try
                     {
                         string[] availablePorts = SerialPort.GetPortNames();
-                        bool isPresent = Array.IndexOf(availablePorts, "COM8") != -1;
+                        String commport = ConfigurationManager.AppSettings["commport"];
+                        bool isPresent = Array.IndexOf(availablePorts, commport) != -1;
                         if (isPresent && !devicePresent)
                         {
                             button2.BackColor = Color.Green;
